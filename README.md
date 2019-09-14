@@ -17,3 +17,17 @@ This project reads the database of generated apkg file, and makes use of [genank
 ```sh
 ./fix_mn_anki_exports.py fix /path/to/apkg
 ```
+
+You'll see output like this:
+```
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Auto located apkg file /path/to/apkg
+[09/14/2019 23:00:47][fix_mn_anki_exports]: files: ['collection.anki2', 'media']
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Extracted collection.anki2 to /tmp/mn-anki-exports-fix/tmprjqntj9e
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Loaded the model
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Loaded 45 notes
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Fixed all 45 notes
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Loaded deck info: deck name = 20181501542376, id = mydeck
+[09/14/2019 23:00:47][fix_mn_anki_exports]: Generating output file /tmp/output.apkg
+```
+
+The improved apkg would be `/tmp/output.apkg`.
