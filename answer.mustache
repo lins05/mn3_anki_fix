@@ -1,0 +1,45 @@
+<div class="section">
+  {{#Front}}
+    <div>{{Front}}</div>
+    {{#ClozeBack}}
+      <div class="mbooks-highlight-txt" >
+        {{cloze:ClozeBack}}
+      </div>
+    {{/ClozeBack}}
+    {{#Back}}
+      <div>{{Back}}</div>
+    {{/Back}}
+    {{#TextBack}}
+      <div class="mbooks-highlight-txt" >
+        {{TextBack}}
+      </div>
+    {{/TextBack}}
+  {{/Front}}
+
+  {{^Front}}
+    {{#ClozeBack}}
+      <div class="mbooks-highlight-txt" >
+        {{cloze:ClozeBack}}
+      </div>
+    {{/ClozeBack}}
+    {{#TextBack}}
+      <div class="mbooks-highlight-txt" >
+        {{TextBack}}
+      </div>
+    {{/TextBack}}
+    {{#Back}}
+      <div>{{Back}}</div>
+    {{/Back}}
+  {{/Front}}
+</div>
+
+{{#MNLink}}
+  <div class="section">
+    {{MNLink}}
+  </div>
+{{/MNLink}}
+{{#MNMindMap}}
+  <div class="section">
+    {{MNMindMap}}
+  </div>
+{{/MNMindMap}}
