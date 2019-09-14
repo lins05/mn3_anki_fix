@@ -3,8 +3,23 @@
 Fix the anki cards exported by MarginNote3 (up to 3.4.3). The problems I suffer are:
 - Only one anki card is generated, even if there are multiple clozes.
 - Inconsistent & confusing format of the card front / back for cards w/ clozes in the title and cards w/o.
+- MN tags appear in the back of the anki card.
 
-This project reads the database of generated apkg file, and makes use of [genanki](https://github.com/kerrickstaley/genanki) package to rewrite it to a better one.
+This script reads the contents of generated `apkg` file, and makes use of [genanki](https://github.com/kerrickstaley/genanki) package to rewrite it to a better one.
+
+## Visual Comparison
+
+### Original apkg imported into Anki
+
+- title shown in bottom
+- only one card for 3 clozes
+- tag is shown in the back card
+
+![](images/before.gif)
+
+### Improved apkg imported into Anki
+
+![](images/after.gif)
 
 ## How to use
 
