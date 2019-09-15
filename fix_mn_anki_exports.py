@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 #coding: UTF-8
 
-from __future__ import absolute_import, division, print_function
-
+import time
 import copy
 import datetime
 import json
@@ -32,6 +31,9 @@ import genanki
 
 OLDDIR = os.getcwd()
 os.chdir(dirname(abspath(realpath(__file__))))
+
+sys.path.insert(0, '.')
+from processors import run_fields_processors
 
 @click.group()
 @click.pass_context
@@ -155,7 +157,7 @@ def _fix_cloze_note_fields(model, note):
     # missing ones.
     n_clozes = 0
     for name, value in fields:
-        if name in ('ClozeFront', 'ClozeBack'):
+        if name == 'ClozeFront':
             n_clozes, value = _fix_cloze(value)
         elif name == 'Back':
             # if 'lec02' in value:
@@ -164,6 +166,9 @@ def _fix_cloze_note_fields(model, note):
         # elif name == 'Front':
         #     value = _bold_first_line(value)
         fixed_fields.append(value)
+
+    processed = run_fields_processors(dict(zip(fields_d, fixed_fields)))
+    fixed_fields = list(processed.values())
 
     _swap_first_two(fixed_fields)
 
@@ -216,14 +221,31 @@ NOTE_ATTRS = [
     "data",
 ]
 
-def _fix_cards(db, note_id, note, n_clozes):
+_card_id = None
+def get_card_id():
+    global _card_id
+    if _card_id is None:
+        _card_id = int(time.time() * 1000)
+    _card_id += 1
+    return _card_id
+
+_note_id = None
+def get_note_id():
+    global _note_id
+    if _note_id is None:
+        _note_id = int(time.time())
+    _note_id += 1
+    return _note_id
+
+def _fix_cloze_cards(db, note_id, note, n_clozes):
     # logging.info('n_clozes = %s', n_clozes)
-    if n_clozes <= 1:
+    if n_clozes == 0:
         return
     cards = db.execute('SELECT * FROM cards where nid = {}'.format(note_id)).fetchall()
     if not cards or len(cards) > 1:
         return
-    fixed_cards = [genanki.Card(card_ord) for card_ord in range(n_clozes)]
+    fixed_cards = [genanki.Card(card_ord, card_id=get_card_id())
+                   for card_ord in range(n_clozes)]
     setattr(note, 'cards', fixed_cards)
 
 def is_empty_field(v):
@@ -246,8 +268,11 @@ def _fix_non_cloze_note_fields(non_cloze_model, fields):
     back = _fix_back_field(fields)
     fields['Back'] = back
 
-    return [fields[name] for name in fields
-            if name not in NON_CLOZE_EXCLUDED_FIELDS]
+    fixed_fields = dict([
+        (name, fields[name]) for name in fields
+        if name not in NON_CLOZE_EXCLUDED_FIELDS
+    ])
+    return list(run_fields_processors(fixed_fields).values)
 
 def _fix_note(db, cloze_model, non_cloze_model, _note):
     # Turn a sql row to a dict
@@ -262,6 +287,7 @@ def _fix_note(db, cloze_model, non_cloze_model, _note):
             model=non_cloze_model,
             guid=note['guid'],
             fields=fixed_fields,
+            note_id=get_note_id(),
         )
     else:
         n_clozes, sort_field, fields = _fix_cloze_note_fields(cloze_model, note)
@@ -270,8 +296,9 @@ def _fix_note(db, cloze_model, non_cloze_model, _note):
             guid=note['guid'],
             fields=fields,
             sort_field=sort_field,
+            note_id=note['id'],
         )
-        _fix_cards(db, note['id'], fixed_note, n_clozes)
+        _fix_cloze_cards(db, note['id'], fixed_note, n_clozes)
     return fixed_note
 
 def _fix_db(db):
