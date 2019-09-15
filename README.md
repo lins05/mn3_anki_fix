@@ -23,6 +23,7 @@ This script reads the contents of generated `apkg` file, and makes use of [genan
 
 ## How to use
 
+0. Remove all MN3 cards from anki. Otherwise the import would fail.
 1. Make sure python3 is installed on your Mac.
 2. Install the requirements
 ```sh
