@@ -24,7 +24,7 @@ This script reads the contents of generated `apkg` file, and makes use of [genan
 ## Limitations
 
 1. All existing MN3 anki cards must be deleted from anki first. Otherwise the import would fail.
-2. Cards with images/videos are not supported.
+2. Cards with images/videos/audios are not supported.
 
 ## How to use
 
