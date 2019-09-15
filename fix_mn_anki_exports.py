@@ -53,18 +53,15 @@ def _fix_dbfile(dbfile):
     with sqlite3.connect(dbfile) as db:
         return _fix_db(db)
 
-def load_template(name):
-    suffix = '.mustache'
-    if not name.endswith(suffix):
-        name = '{}{}'.format(name, suffix)
-    with open(name, 'r') as fp:
+def load_file(name):
+    with open(join('files', name), 'r') as fp:
         return fp.read()
 
 def _fix_template(model):
     template = model['tmpls'][0]
     template.update({
-        'qfmt': load_template('question'),
-        'afmt': load_template('answer'),
+        'qfmt': load_file('question.mustache'),
+        'afmt': load_file('answer.mustache'),
     })
     return [template]
 
@@ -74,10 +71,18 @@ def _model_from_db(db):
     model_id = list(models)[0]
     model = list(models.values())[0]
 
+    # Switch first (Front) & second (ClozeFront) field to use the
+    # latter as sort field
+    model_fields = model['flds']
+    _swap_first_two(model_fields)
+
+    css = model['css']
+    css += '\n' + load_file('custom.css')
+
     loaded_model = genanki.Model(
         int(model_id),
         model['name'],
-        fields=model['flds'],
+        fields=model_fields,
         templates=_fix_template(model),
         css=model['css'],
         # Set type to cloze, this is very important!
@@ -105,11 +110,17 @@ def _maybe_remove_tag(value):
 # def _bold_first_line(value):
 #     if '<div class="mbooks-highlightblock"><div class="mbooks-noteblock">意外的成功是变化已经发生的征兆<br>'
 
+def _swap_first_two(l):
+    assert len(l) >= 2
+    l[0], l[1] = l[1], l[0]
+    return l
+
 def _fix_note_fields(model, note):
-    field_names = [x['name'] for x in model.fields]
+    # The first two fields has been swapped, we need to remap
+    field_names = _swap_first_two([x['name'] for x in model.fields])
     fields = list(zip(field_names, note['flds'].split(ANKI_FIELD_SEP)))
     fields_d = dict(fields)
-    sort_field = fields_d['Front'] or fields_d['ClozeFront']
+    sort_field = fields_d['ClozeFront'] or fields_d['Front']
 
     front = remove_tags(fields_d['Front'])
     back = fields_d['Back']
@@ -131,6 +142,8 @@ def _fix_note_fields(model, note):
         # elif name == 'Front':
         #     value = _bold_first_line(value)
         fixed_fields.append(value)
+
+    _swap_first_two(fixed_fields)
 
     return n_clozes, sort_field, fixed_fields
 
