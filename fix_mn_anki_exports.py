@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 #coding: UTF-8
 
-import time
 import copy
 import datetime
 import json
@@ -12,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 from os.path import (
     abspath,
@@ -28,12 +28,12 @@ import click
 from w3lib.html import remove_tags
 
 import genanki
+from processors import run_fields_processors
 
 OLDDIR = os.getcwd()
 os.chdir(dirname(abspath(realpath(__file__))))
 
 sys.path.insert(0, '.')
-from processors import run_fields_processors
 
 @click.group()
 @click.pass_context
