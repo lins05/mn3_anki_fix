@@ -57,11 +57,19 @@ def load_file(name):
     with open(join('files', name), 'r') as fp:
         return fp.read()
 
-def _fix_template(model):
-    template = model['tmpls'][0]
+def _fix_cloze_template(model):
+    template = copy.deepcopy(model['tmpls'][0])
     template.update({
-        'qfmt': load_file('question.mustache'),
-        'afmt': load_file('answer.mustache'),
+        'qfmt': load_file('cloze_question.mustache'),
+        'afmt': load_file('cloze_answer.mustache'),
+    })
+    return [template]
+
+def _fix_non_cloze_template(model):
+    template = copy.deepcopy(model['tmpls'][0])
+    template.update({
+        'qfmt': load_file('non_cloze_question.mustache'),
+        'afmt': load_file('non_cloze_answer.mustache'),
     })
     return [template]
 
@@ -73,25 +81,36 @@ def _model_from_db(db):
 
     # Switch first (Front) & second (ClozeFront) field to use the
     # latter as sort field
-    model_fields = model['flds']
-    _swap_first_two(model_fields)
+    cloze_model_fields = copy.deepcopy(model['flds'])
+    _swap_first_two(cloze_model_fields)
 
     css = model['css']
     css += '\n' + load_file('custom.css')
 
-    loaded_model = genanki.Model(
-        int(model_id),
-        model['name'],
-        fields=model_fields,
-        templates=_fix_template(model),
-        css=model['css'],
+    cloze_model = genanki.Model(
+        int(model_id) + 1,
+        model['name'] + '_CustomCloze',
+        fields=cloze_model_fields,
+        templates=_fix_cloze_template(model),
+        css=css,
         # Set type to cloze, this is very important!
         type=1,
     )
-    # setattr(loaded_model, '_req', model['req'])
+
+    non_cloze_model_fields = [x for x in copy.deepcopy(model['flds'])
+                          if x['name'] not in NON_CLOZE_EXCLUDED_FIELDS]
+    non_cloze_model = genanki.Model(
+        int(model_id) + 2,
+        model['name'] + '_Custom',
+        fields=non_cloze_model_fields,
+        templates=_fix_non_cloze_template(model),
+        css=css,
+        # Set type to non-cloze
+        type=0,
+    )
     logging.info('Loaded the model')
 
-    return loaded_model
+    return cloze_model, non_cloze_model
 
 def _fix_cloze(value):
     pattern = re.compile(r'(\{\{c1::.*?\}\})')
@@ -103,9 +122,16 @@ def _fix_cloze(value):
     new_value = re.sub(pattern, repl, value)
     return i, new_value
 
-TAG_RE = re.compile('<div class="mbooks-noteblock" *>#[^ <>-]+<br/?></div>')
+TAG_PART = '#[^ <>-]+'
+TAG_RE_STRS = [
+    r'\<div class="mbooks-noteblock" *\>{}\<br/?\>\</div\>'.format(TAG_PART),
+    r'\<br\>{}\<br\>'.format(TAG_PART),
+]
+TAG_RES = [re.compile(x) for x in TAG_RE_STRS]
 def _maybe_remove_tag(value):
-    return re.sub(TAG_RE, '', value)
+    for r in TAG_RES:
+        value = re.sub(r, '', value)
+    return value
 
 # def _bold_first_line(value):
 #     if '<div class="mbooks-highlightblock"><div class="mbooks-noteblock">意外的成功是变化已经发生的征兆<br>'
@@ -115,18 +141,14 @@ def _swap_first_two(l):
     l[0], l[1] = l[1], l[0]
     return l
 
-def _fix_note_fields(model, note):
+def _fix_cloze_note_fields(model, note):
     # The first two fields has been swapped, we need to remap
     field_names = _swap_first_two([x['name'] for x in model.fields])
     fields = list(zip(field_names, note['flds'].split(ANKI_FIELD_SEP)))
     fields_d = dict(fields)
-    sort_field = fields_d['ClozeFront'] or fields_d['Front']
+    sort_field = fields_d['ClozeFront']
 
-    front = remove_tags(fields_d['Front'])
-    back = fields_d['Back']
-    back_before_br = remove_tags(back.split('<br')[0])
-    if front and front == back_before_br:
-        back = back.replace(front, '', 1)
+    back = _fix_back_field(fields_d)
 
     fixed_fields = []
     # Remember how many clozes are there so later we can make up the
@@ -138,7 +160,7 @@ def _fix_note_fields(model, note):
         elif name == 'Back':
             # if 'lec02' in value:
             #     import pudb; pudb.set_trace() # yapf: disable
-            value = _maybe_remove_tag(back)
+            value = back
         # elif name == 'Front':
         #     value = _bold_first_line(value)
         fixed_fields.append(value)
@@ -204,23 +226,59 @@ def _fix_cards(db, note_id, note, n_clozes):
     fixed_cards = [genanki.Card(card_ord) for card_ord in range(n_clozes)]
     setattr(note, 'cards', fixed_cards)
 
-def _fix_note(db, model, _note):
+def is_empty_field(v):
+    return not bool(remove_tags(v).strip())
+
+NON_CLOZE_EXCLUDED_FIELDS = (
+    'ClozeFront',
+    'ClozeBack',
+)
+
+def _fix_back_field(fields):
+    front = remove_tags(fields['Front'])
+    back = fields['Back']
+    back_before_br = remove_tags(back.split('<br')[0])
+    if front and front == back_before_br:
+        back = back.replace(front, '', 1)
+    return _maybe_remove_tag(back)
+
+def _fix_non_cloze_note_fields(non_cloze_model, fields):
+    back = _fix_back_field(fields)
+    fields['Back'] = back
+
+    return [fields[name] for name in fields
+            if name not in NON_CLOZE_EXCLUDED_FIELDS]
+
+def _fix_note(db, cloze_model, non_cloze_model, _note):
+    # Turn a sql row to a dict
     note = dict(zip(NOTE_ATTRS, _note))
-    n_clozes, sort_field, fields = _fix_note_fields(model, note)
-    fixed_note = genanki.Note(
-        model=model,
-        guid=note['guid'],
-        fields=fields,
-        sort_field=sort_field,
-    )
-    _fix_cards(db, note['id'], fixed_note, n_clozes)
+
+    field_names = _swap_first_two([x['name'] for x in cloze_model.fields])
+    fields = dict(list(zip(field_names, note['flds'].split(ANKI_FIELD_SEP))))
+    if is_empty_field(fields['ClozeFront']):
+        # A non-cloze note
+        fixed_fields = _fix_non_cloze_note_fields(non_cloze_model, fields)
+        fixed_note = genanki.Note(
+            model=non_cloze_model,
+            guid=note['guid'],
+            fields=fixed_fields,
+        )
+    else:
+        n_clozes, sort_field, fields = _fix_cloze_note_fields(cloze_model, note)
+        fixed_note = genanki.Note(
+            model=cloze_model,
+            guid=note['guid'],
+            fields=fields,
+            sort_field=sort_field,
+        )
+        _fix_cards(db, note['id'], fixed_note, n_clozes)
     return fixed_note
 
 def _fix_db(db):
-    model = _model_from_db(db)
+    cloze_model, non_cloze_model = _model_from_db(db)
     notes = db.execute('SELECT * FROM notes').fetchall()
     logging.info('Loaded %s notes', len(notes))
-    fixed_notes = [_fix_note(db, model, note) for note in notes]
+    fixed_notes = [_fix_note(db, cloze_model, non_cloze_model, note) for note in notes]
     logging.info('Fixed all %s notes', len(notes))
 
     deck = _load_deck(db)
