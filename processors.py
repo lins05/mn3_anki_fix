@@ -57,7 +57,7 @@ class CopyClozeFrontToBack(FieldProcessor):
 GENIUS_LINK_RE = re.compile(r'\(https://genius\.com.+?\)')
 
 class GeniusLinkRemover(SingleFieldProcess):
-    def process_one_field(self, name, value):
+    def process_one_field(self, _, value):
         if isinstance(value, str):
             return re.sub(GENIUS_LINK_RE, '', value)
         return value

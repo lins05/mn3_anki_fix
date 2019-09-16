@@ -239,7 +239,7 @@ def _fix_non_cloze_note_fields(non_cloze_model, fields):
         (name, fields[name]) for name in fields
         if name not in NON_CLOZE_EXCLUDED_FIELDS
     ])
-    return list(run_fields_processors(fixed_fields).values)
+    return list(run_fields_processors(fixed_fields).values())
 
 def _fix_note(db, cloze_model, non_cloze_model, _note):
     # Turn a sql row to a dict
@@ -289,10 +289,21 @@ def _find_apkg():
     return path
 
 @main.command()
+def model():
+    """
+    This command uses a demo apkg. It's purpose is just to regenerate
+    the models to be imported into anki.
+    """
+    _fix_path('files/testdeck.apkg')
+
+@main.command()
 @click.argument('path', default='auto')
 def fix(path):
     if path == 'auto':
         path = _find_apkg()
+    _fix_path(path)
+
+def _fix_path(path):
     _check_or_mkdir(WORKDIR)
     path = expanduser(path)
     if not exists(path):
