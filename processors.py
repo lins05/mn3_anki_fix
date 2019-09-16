@@ -25,7 +25,7 @@ class SingleFieldProcess(FieldProcessor):
 TAG_PART = '#[^ <>-]+'
 TAG_RE_STRS = [
     r'\<div class="mbooks-noteblock" *\>{}\<br/?\>\</div\>'.format(TAG_PART),
-    r'\<br\>{}\<br\>'.format(TAG_PART),
+    r'(\<br/?\>)?{}\<br/?\>'.format(TAG_PART),
 ]
 TAG_RES = [re.compile(x) for x in TAG_RE_STRS]
 def remove_mn_tags(value):
