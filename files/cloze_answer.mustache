@@ -1,11 +1,7 @@
 <div class="section">
   {{#Front}}
     <div>{{Front}}</div>
-    {{#ClozeBack}}
-      <div class="mbooks-highlight-txt" >
-        {{cloze:ClozeBack}}
-      </div>
-    {{/ClozeBack}}
+    <div class="mbooks-highlight-txt" >{{cloze:ClozeFront}}</div>
     {{#Back}}
       <div>{{Back}}</div>
     {{/Back}}
@@ -17,11 +13,11 @@
   {{/Front}}
 
   {{^Front}}
-    {{#ClozeBack}}
+    {{#ClozeFront}}
       <div class="mbooks-highlight-txt" >
-        {{cloze:ClozeBack}}
+        {{cloze:ClozeFront}}
       </div>
-    {{/ClozeBack}}
+    {{/ClozeFront}}
     {{#TextBack}}
       <div class="mbooks-highlight-txt" >
         {{TextBack}}

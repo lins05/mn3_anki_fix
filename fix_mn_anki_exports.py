@@ -124,20 +124,6 @@ def _fix_cloze(value):
     new_value = re.sub(pattern, repl, value)
     return i, new_value
 
-TAG_PART = '#[^ <>-]+'
-TAG_RE_STRS = [
-    r'\<div class="mbooks-noteblock" *\>{}\<br/?\>\</div\>'.format(TAG_PART),
-    r'\<br\>{}\<br\>'.format(TAG_PART),
-]
-TAG_RES = [re.compile(x) for x in TAG_RE_STRS]
-def _maybe_remove_tag(value):
-    for r in TAG_RES:
-        value = re.sub(r, '', value)
-    return value
-
-# def _bold_first_line(value):
-#     if '<div class="mbooks-highlightblock"><div class="mbooks-noteblock">意外的成功是变化已经发生的征兆<br>'
-
 def _swap_first_two(l):
     assert len(l) >= 2
     l[0], l[1] = l[1], l[0]
@@ -150,8 +136,6 @@ def _fix_cloze_note_fields(model, note):
     fields_d = dict(fields)
     sort_field = fields_d['ClozeFront']
 
-    back = _fix_back_field(fields_d)
-
     fixed_fields = []
     # Remember how many clozes are there so later we can make up the
     # missing ones.
@@ -159,12 +143,6 @@ def _fix_cloze_note_fields(model, note):
     for name, value in fields:
         if name == 'ClozeFront':
             n_clozes, value = _fix_cloze(value)
-        elif name == 'Back':
-            # if 'lec02' in value:
-            #     import pudb; pudb.set_trace() # yapf: disable
-            value = back
-        # elif name == 'Front':
-        #     value = _bold_first_line(value)
         fixed_fields.append(value)
 
     processed = run_fields_processors(dict(zip(fields_d, fixed_fields)))
@@ -256,18 +234,7 @@ NON_CLOZE_EXCLUDED_FIELDS = (
     'ClozeBack',
 )
 
-def _fix_back_field(fields):
-    front = remove_tags(fields['Front'])
-    back = fields['Back']
-    back_before_br = remove_tags(back.split('<br')[0])
-    if front and front == back_before_br:
-        back = back.replace(front, '', 1)
-    return _maybe_remove_tag(back)
-
 def _fix_non_cloze_note_fields(non_cloze_model, fields):
-    back = _fix_back_field(fields)
-    fields['Back'] = back
-
     fixed_fields = dict([
         (name, fields[name]) for name in fields
         if name not in NON_CLOZE_EXCLUDED_FIELDS

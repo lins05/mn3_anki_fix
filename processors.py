@@ -51,7 +51,7 @@ class RemoveFrontFromBack(FieldProcessor):
 
 class FixClozeBack(FieldProcessor):
     def process_note_fields(self, fields):
-        if fields.get('ClozeFront') and not fields.get('ClozeBack'):
+        if fields.get('ClozeFront'):
             fields['ClozeBack'] = fields['ClozeFront']
 
 GENIUS_LINK_RE = re.compile(r'\(https://genius\.com.+?\)')
