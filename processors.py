@@ -49,7 +49,7 @@ class RemoveFrontFromBack(FieldProcessor):
       fields['Back'] = back
       return fields
 
-class FixClozeBack(FieldProcessor):
+class CopyClozeFrontToBack(FieldProcessor):
     def process_note_fields(self, fields):
         if fields.get('ClozeFront'):
             fields['ClozeBack'] = fields['ClozeFront']
@@ -62,11 +62,23 @@ class GeniusLinkRemover(SingleFieldProcess):
             return re.sub(GENIUS_LINK_RE, '', value)
         return value
 
+BOLD_RE = re.compile(r'\<strong\>(\{\{c[0-9]+:[^}]+\}\})\</strong\>')
+class RemoveBoldCloze(SingleFieldProcess):
+    def process_one_field(self, name, value):
+        if name != 'ClozeFront':
+            return value
+
+        def repl(m):
+            return m.group(1)
+
+        return re.sub(BOLD_RE, repl, value)
+
 _FIELD_PROCESSORS = [
-    RemoveFrontFromBack(),
-    TagRemover(),
-    FixClozeBack(),
     GeniusLinkRemover(),
+    TagRemover(),
+    RemoveFrontFromBack(),
+    RemoveBoldCloze(),
+    CopyClozeFrontToBack(),
 ]
 
 def run_fields_processors(fields):
