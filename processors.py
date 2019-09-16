@@ -41,18 +41,29 @@ class TagRemover(SingleFieldProcess):
 
 class RemoveFrontFromBack(FieldProcessor):
     def process_note_fields(self, fields):
-      front = remove_tags(fields['Front'])
-      back = fields['Back']
-      back_before_br = remove_tags(back.split('<br')[0])
-      if front and front == back_before_br:
-          back = back.replace(front, '', 1)
-      fields['Back'] = back
-      return fields
+        front = remove_tags(fields['Front'])
+        back = fields['Back']
+        back_before_br = remove_tags(back.split('<br')[0])
 
-class CopyClozeFrontToBack(FieldProcessor):
+        if front and front == back_before_br:
+            front_re = re.compile(r'{} *\<br?/\>'.format(re.escape(front)))
+            replaced = False
+            def repl(s):
+                nonlocal replaced
+                if replaced:
+                    return s.group(0)
+                replaced = True
+                return ''
+            back = re.sub(front_re, repl, back)
+
+        fields['Back'] = back
+        return fields
+
+class FixClozeBack(FieldProcessor):
     def process_note_fields(self, fields):
-        if fields.get('ClozeFront'):
-            fields['ClozeBack'] = fields['ClozeFront']
+        # We don't use ClozeBack.
+        if fields.get('ClozeBack'):
+            fields['ClozeBack'] = ''
 
 GENIUS_LINK_RE = re.compile(r'\(https://genius\.com.+?\)')
 
@@ -78,7 +89,7 @@ _FIELD_PROCESSORS = [
     TagRemover(),
     RemoveFrontFromBack(),
     RemoveBoldCloze(),
-    CopyClozeFrontToBack(),
+    FixClozeBack(),
 ]
 
 def run_fields_processors(fields):
