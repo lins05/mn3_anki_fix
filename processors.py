@@ -3,6 +3,7 @@ import re
 import sys
 from abc import ABC, abstractmethod
 
+from strsimpy.jaccard import Jaccard
 from w3lib.html import remove_tags
 
 
@@ -39,25 +40,53 @@ class TagRemover(SingleFieldProcess):
             return remove_mn_tags(value)
         return value
 
-class RemoveFrontFromBack(FieldProcessor):
-    def process_note_fields(self, fields):
-        front = remove_tags(fields['Front'])
-        back = fields['Back']
-        back_before_br = remove_tags(back.split('<br')[0])
+SIM_THRESHOLD = 0.95
+def very_similar(s1, s2):
+    if s1 == s2:
+        return True
+    jaccard = Jaccard(1)
+    return jaccard.similarity(s1, s2) >= SIM_THRESHOLD
 
-        if front and front == back_before_br:
-            front_re = re.compile(r'{} *\<br?/\>'.format(re.escape(front)))
-            replaced = False
-            def repl(s):
-                nonlocal replaced
-                if replaced:
-                    return s.group(0)
-                replaced = True
-                return ''
-            back = re.sub(front_re, repl, back)
+def unquote_clozes(s):
+    def repl(m):
+        return m.group(1)
+    return re.sub(r'\{\{c[1-9][0-9]*::([^}]+)\}\}', repl, s)
+
+class RemoveFrontFromBack(FieldProcessor):
+    field_name = 'Front'
+
+    def process_note_fields(self, fields):
+        front = remove_tags(fields[self.field_name])
+        if not front:
+            return fields
+        back = fields['Back']
+
+        f = unquote_clozes(remove_tags(front))
+        b = remove_tags(back)
+        if not f or not b:
+            return fields
+
+        if very_similar(f, b):
+            back = ''
+        elif '<br' in back:
+            parts = back.split('<br', 1)
+            back_before_br, remaining = parts
+            back_before_br = remove_tags(back_before_br)
+            if front != back_before_br:
+                parts = back.rsplit('<br', 1)
+                back_before_br, remaining = parts
+                back_before_br = remove_tags(back_before_br)
+
+            if front == back_before_br:
+                back = remaining.lstrip('/>').lstrip('>')
 
         fields['Back'] = back
         return fields
+
+
+class RemoveClozeFrontFromBack(RemoveFrontFromBack):
+    field_name = 'ClozeFront'
+
 
 class FixClozeBack(FieldProcessor):
     def process_note_fields(self, fields):
@@ -88,6 +117,7 @@ _FIELD_PROCESSORS = [
     GeniusLinkRemover(),
     TagRemover(),
     RemoveFrontFromBack(),
+    RemoveClozeFrontFromBack(),
     RemoveBoldCloze(),
     FixClozeBack(),
 ]
