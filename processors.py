@@ -56,6 +56,9 @@ class RemoveFrontFromBack(FieldProcessor):
     field_name = 'Front'
 
     def process_note_fields(self, fields):
+        if self.field_name not in fields:
+            # Non-cloze cards may not have ClozeFront field
+            return fields
         front = remove_tags(fields[self.field_name])
         if not front:
             return fields
