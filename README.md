@@ -1,3 +1,8 @@
+## This tools may no longer work with the latest version of MarginNote.
+
+This tool was written several years ago, and most likely the format of the apkg
+file exported by MN has been changed so far.
+
 ## What is this
 
 Fix the anki cards exported by MarginNote3 (up to 3.4.3). The problems I suffer are:
